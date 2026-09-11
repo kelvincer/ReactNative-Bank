@@ -1,0 +1,40 @@
+import { Credit } from "../../domain/Credit";
+
+export const mockCredits: Credit[] = [
+    {
+        id: '1',
+        title: 'Crédito Vehicular',
+        identifier: '638474747847',
+        status: 'Activo',
+        balance: 12300,
+        monthlyFee: 850,
+        expiration: new Date('2025-04-20'),
+        rate: 12.5,
+        initDate: new Date('2023-04-20'),
+        totalTerm: 48,
+    },
+    {
+        id: '2',
+        title: 'Crédito Personal',
+        identifier: '738245612901',
+        status: 'Activo',
+        balance: 3240,
+        monthlyFee: 320,
+        expiration: new Date('2025-05-05'),
+        rate: 9.8,
+        initDate: new Date('2024-05-05'),
+        totalTerm: 24,
+    },
+    {
+        id: '3',
+        title: 'Crédito Hipotecario',
+        identifier: '112094847655',
+        status: 'Inactivo',
+        balance: 84560,
+        monthlyFee: 2100,
+        expiration: new Date('2025-04-28'),
+        rate: 7.2,
+        initDate: new Date('2020-04-28'),
+        totalTerm: 120,
+    },
+];
