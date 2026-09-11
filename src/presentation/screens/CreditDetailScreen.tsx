@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
     },
     chip: {
         alignSelf: 'flex-start',
+        marginTop: 6
     },
     row: {
         flexDirection: 'row',

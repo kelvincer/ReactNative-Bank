@@ -11,6 +11,7 @@ export default function LoginScreen({ navigation }: Props) {
 
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
 
     const login = useAuthStore(state => state.login)
     const isLoading = useAuthStore(state => state.isLoading)
@@ -45,7 +46,11 @@ export default function LoginScreen({ navigation }: Props) {
                     value={password}
                     onChangeText={text => setPassword(text)}
                     style={styles.input}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
+                    right={<TextInput.Icon
+                        icon={showPassword ? 'eye-off' : 'eye'}
+                        onPress={() => setShowPassword(!showPassword)}
+                    />}
                 />
 
                 <Button mode="contained"
