@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native"
-import { Card, Icon, MD3Colors, Text } from "react-native-paper"
+import { Card, Icon, Text } from "react-native-paper"
 import { Credit } from "../../domain/Credit"
 
 const formatBalance = (balance: number) =>

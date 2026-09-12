@@ -5,7 +5,7 @@ export interface PayRequest {
 
 export interface PayResponse {
     success: boolean,
-    payment: Payment
+    payment: Payment | null
 
 }
 

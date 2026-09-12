@@ -1,5 +1,5 @@
 import { Credit } from "../../domain/Credit";
-import { Payment, PayResponse } from "../../domain/PayTypes";
+import { Payment } from "../../domain/PayTypes";
 
 export type RootStackParamList = {
   Login: undefined;

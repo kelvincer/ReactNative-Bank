@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import { LoginRequest, User } from "../domain/AuthTypes"
-import { api } from "../infrastructure/network/api"
 import { loginRequest } from "../infrastructure/network/AuthService"
 import AsyncStorage from '@react-native-async-storage/async-storage'
 

@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StyleSheet, View } from "react-native"
-import { Button, Card, Icon, Text } from "react-native-paper"
+import { Button, Icon, Text } from "react-native-paper"
 import { RootStackParamList } from "../navigation/RootStackParamList";
 import { formatBalance, formatDate } from "../../util/util";
 
