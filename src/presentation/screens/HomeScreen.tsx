@@ -16,6 +16,7 @@ export default function HomeScreen({ navigation }: Props) {
     const error = useCreditState(state => state.error)
     const getCredits = useCreditState(state => state.getCredits)
 
+
     useEffect(() => {
         getCredits()
     }, [getCredits])

@@ -2,8 +2,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "../screens/LoginScreen";
 import { RootStackParamList } from "./RootStackParamList";
 import HomeScreen from "../screens/HomeScreen";
-import CreditDetail from "../screens/CreditDetailScreen";
-import Payment from "../screens/PaymentScreen";
+import PaymentScreen from "../screens/PaymentScreen";
+import PaymentProofScreen from "../screens/PaymentProofScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -17,11 +17,11 @@ function AppStack() {
         component={HomeScreen}
         options={{ title: 'Mis créditos' }} />
       <Stack.Screen name="Detail"
-        component={CreditDetail}
+        component={PaymentScreen}
         options={{ title: 'Detalle del crédito' }} />
       <Stack.Screen name="Payment"
-        component={Payment}
-        options={{ title: 'Constancia de pago' }} />
+        component={PaymentProofScreen}
+        options={{ title: 'Constancia de pago', headerBackVisible: false, }} />
     </Stack.Navigator>
   );
 }

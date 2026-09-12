@@ -1,75 +1,113 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StyleSheet, View } from "react-native"
-import { Card, Icon, Text } from "react-native-paper"
-import { RootStackParamList } from "../navigation/RootStackParamList";
-import { formatBalance } from "./CreditDetailScreen";
+import { Button, Card, Chip, Icon, Text } from "react-native-paper"
+import { NativeStackScreenProps } from "@react-navigation/native-stack"
+import { RootStackParamList } from "../navigation/RootStackParamList"
+import { Credit } from "../../domain/Credit"
+import { formatBalance, formatDate } from "../../util/util"
+import { userPaymentState } from "../../stores/paymentStore"
 
+const statusColors: Record<Credit['status'], { backgroundColor: string; color: string }> = {
+    'Activo': { backgroundColor: '#4CAF50', color: '#FFFFFF' },
+    'Inactivo': { backgroundColor: '#9E9E9E', color: '#FFFFFF' },
+};
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
-const Payment = ({ route }: Props) => {
-
+export default function PaymentScreen({ navigation, route }: Props) {
     const { credit } = route.params;
 
+    const pay = userPaymentState(state => state.makePay)
+    const isLoading = userPaymentState(state => state.isLoading)
+    const error = userPaymentState(state => state.error)
+
+    const handleSave = async () => {
+        const { success, payment } = await pay({
+            title: credit.title,
+            identifier: credit.identifier
+        })
+
+        if (success && payment) {
+            navigation.navigate('Payment', { payment })
+        }
+    }
+
     const rows: { label: string; value: string }[] = [
-        { label: 'Crédito', value: credit.title },
-        { label: 'N° de crédito', value: credit.identifier },
-        { label: 'Monto pagado', value: formatBalance(credit.monthlyFee) },
-        { label: 'Fecha de Pago', value: '10 Abr 2025 - 09:41' },
-        { label: 'N° de operación', value: '643724234' },
+        { label: 'Saldo pendiente', value: formatBalance(credit.balance) },
+        { label: 'Identificador', value: `N° ${credit.identifier}` },
+        { label: 'Cuota mensual', value: formatBalance(credit.monthlyFee) },
+        { label: 'Próximo vencimiento', value: formatDate(credit.expiration) },
+        { label: 'Tasa', value: `${credit.rate}%` },
+        { label: 'Fecha de inicio', value: formatDate(credit.initDate) },
+        { label: 'Plazo total', value: `${credit.totalTerm} meses` },
     ];
 
     return (
-        <Card style={styles.container}>
-            <View style={styles.header}>
-                <Icon
-                    source="cash-sync"
-                    size={90}
-                />
-                <View>
-                    <Text style={styles.name}>
-                        Compartamos Banco
-                    </Text>
-                    <Text>
-                        Banca Digital
-                    </Text>
+        <View style={styles.container}>
+            <Card style={styles.card}>
+                <View style={styles.header}>
+                    <Icon
+                        source="cash-sync"
+                        size={120}
+                    />
+                    <View>
+                        <Text style={styles.title}>{credit.title}</Text>
+                        <Chip
+                            style={[styles.chip, { backgroundColor: statusColors[credit.status].backgroundColor }]}
+                            textStyle={{ color: statusColors[credit.status].color }}
+                        >
+                            {credit.status}
+                        </Chip>
+                    </View>
                 </View>
+            </Card>
 
-            </View>
-            <Text style={styles.title}>Constancia de Pago</Text>
-            {rows.map((row) => (
-                <View key={row.label} style={styles.row}>
-                    <Text>{row.label}</Text>
-                    <Text style={styles.rowValue}>{row.value}</Text>
-                </View>
-            ))}
+            <Card style={styles.card}>
+                {rows.map((row) => (
+                    <View key={row.label} style={styles.row}>
+                        <Text>{row.label}</Text>
+                        <Text style={styles.rowValue}>{row.value}</Text>
+                    </View>
+                ))}
+            </Card>
 
-        </Card>
+            <Button mode="contained"
+                style={styles.button}
+                onPress={handleSave}
+                loading={isLoading}
+                disabled={isLoading}>
+                Realizar Pago
+            </Button>
+
+            {error && (
+                <Text>
+                    {error}
+                </Text>
+            )}
+        </View>
     )
 }
-
-export default Payment
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        margin: 12
+        padding: 16,
+    },
+    card: {
+        marginBottom: 16,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 16
-    },
-    name: {
-        fontSize: 20
+        gap: 8,
+        padding: 16,
     },
     title: {
-        fontWeight: 'semibold',
-        fontSize: 24,
-        marginTop: 12,
-        textAlign: 'center',
-        marginBottom: 12
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    chip: {
+        alignSelf: 'flex-start',
+        marginTop: 6
     },
     row: {
         flexDirection: 'row',
@@ -80,5 +118,8 @@ const styles = StyleSheet.create({
     rowValue: {
         fontWeight: 'bold',
     },
+    button: {
+        marginTop: 'auto',
+        marginVertical: 20
+    },
 })
-

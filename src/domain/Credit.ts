@@ -12,5 +12,5 @@ export interface Credit {
 }
 
 export interface CreditsResponse {
-    credits: Array<Credit>
+    credits: Credit[]
 }
