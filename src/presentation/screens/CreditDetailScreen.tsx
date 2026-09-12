@@ -3,12 +3,7 @@ import { Button, Card, Chip, Icon, Text } from "react-native-paper"
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { RootStackParamList } from "../navigation/RootStackParamList"
 import { Credit } from "../../domain/Credit"
-
-export const formatBalance = (balance: number) =>
-    `S/ ${balance.toLocaleString('es-PE')}`
-
-const formatDate = (date: Date) =>
-    date.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })
+import { formatBalance, formatDate } from "../../util/util"
 
 const statusColors: Record<Credit['status'], { backgroundColor: string; color: string }> = {
     'Activo': { backgroundColor: '#4CAF50', color: '#FFFFFF' },

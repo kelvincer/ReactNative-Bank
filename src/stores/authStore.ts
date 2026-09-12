@@ -1,8 +1,8 @@
-import { create } from "zustand";
-import { LoginRequest, User } from "../domain/AuthTypes";
-import { api } from "../infrastructure/network/api";
-import { loginRequest } from "../infrastructure/network/AuthService";
-
+import { create } from "zustand"
+import { LoginRequest, User } from "../domain/AuthTypes"
+import { api } from "../infrastructure/network/api"
+import { loginRequest } from "../infrastructure/network/AuthService"
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 interface AuthState {
     user: User | null
@@ -28,11 +28,11 @@ export const useAuthStore = create<AuthState>((set) => ({
             })
 
             const response = await loginRequest(credentials)
-            // await AsyncStorage.setItem('token', response.token);
-            // await AsyncStorage.setItem(
-            //     'user',
-            //     JSON.stringify(response.user),
-            // );
+            await AsyncStorage.setItem('token', response.token);
+            await AsyncStorage.setItem(
+                'user',
+                JSON.stringify(response.user),
+            );
 
             console.log(response)
 
@@ -57,8 +57,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
     },
     logout: async () => {
-        //await AsyncStorage.removeItem('token');
-        //await AsyncStorage.removeItem('user');
+        await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('user');
         set({
             user: null,
             token: null,

@@ -5,8 +5,10 @@ import { Credit } from "../../domain/Credit"
 const formatBalance = (balance: number) =>
     `S/ ${balance.toLocaleString('es-PE')}`
 
-const formatExpiration = (date: Date) =>
-    date.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })
+const formatExpiration = (expiration: string | Date) => {
+    const date = expiration instanceof Date ? expiration : new Date(expiration)
+    return date.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 const CreditCard = ({ title, identifier, balance, expiration }: Credit) => {
     return (

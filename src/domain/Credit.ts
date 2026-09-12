@@ -1,5 +1,5 @@
 export interface Credit {
-    id: string
+    id: number
     title: string
     identifier: string
     status: 'Activo' | 'Inactivo'
@@ -9,4 +9,8 @@ export interface Credit {
     rate: number
     initDate: Date
     totalTerm: number
+}
+
+export interface CreditsResponse {
+    credits: Array<Credit>
 }

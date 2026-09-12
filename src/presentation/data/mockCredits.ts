@@ -2,7 +2,7 @@ import { Credit } from "../../domain/Credit";
 
 export const mockCredits: Credit[] = [
     {
-        id: '1',
+        id: 1,
         title: 'Crédito Vehicular',
         identifier: '638474747847',
         status: 'Activo',
@@ -14,7 +14,7 @@ export const mockCredits: Credit[] = [
         totalTerm: 48,
     },
     {
-        id: '2',
+        id: 2,
         title: 'Crédito Personal',
         identifier: '738245612901',
         status: 'Activo',
@@ -26,7 +26,7 @@ export const mockCredits: Credit[] = [
         totalTerm: 24,
     },
     {
-        id: '3',
+        id: 3,
         title: 'Crédito Hipotecario',
         identifier: '112094847655',
         status: 'Inactivo',
