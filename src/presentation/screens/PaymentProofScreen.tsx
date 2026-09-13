@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StyleSheet, View } from "react-native"
-import { Button, Icon, Text } from "react-native-paper"
+import { Button, Icon, Text, useTheme } from "react-native-paper"
 import { RootStackParamList } from "../navigation/RootStackParamList";
 import { formatBalance, formatDate } from "../../util/util";
 
@@ -9,6 +9,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;
 
 const PaymentProofScreen = ({ navigation, route }: Props) => {
 
+    const theme = useTheme()
     const { payment } = route.params;
 
     const rows: { label: string; value: string }[] = [
@@ -27,7 +28,7 @@ const PaymentProofScreen = ({ navigation, route }: Props) => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.colors.secondaryContainer }]}>
             <View style={styles.header}>
                 <Icon
                     source="cash-sync"
@@ -35,7 +36,7 @@ const PaymentProofScreen = ({ navigation, route }: Props) => {
                 />
                 <View>
                     <Text style={styles.name}>
-                        Compartamos Banco
+                        Banco
                     </Text>
                     <Text>
                         Banca Digital

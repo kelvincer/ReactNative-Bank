@@ -26,9 +26,6 @@ export const useCreditState = create<CreditsState>((set) => ({
 
             const response = await creditsRequest()
 
-            console.log('res', response)
-            console.log('resd', response.credits)
-
             const total = response.credits.reduce(
                 (sum, product) => sum + product.balance,
                 0

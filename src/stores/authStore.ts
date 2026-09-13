@@ -33,8 +33,6 @@ export const useAuthStore = create<AuthState>((set) => ({
                 JSON.stringify(response.user),
             );
 
-            console.log(response)
-
             set({
                 user: response.user,
                 token: response.token,

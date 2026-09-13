@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native"
-import { Button, Card, Chip, Icon, Text } from "react-native-paper"
+import { Button, Card, Chip, Icon, Text, useTheme } from "react-native-paper"
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { RootStackParamList } from "../navigation/RootStackParamList"
 import { Credit } from "../../domain/Credit"
@@ -14,7 +14,8 @@ const statusColors: Record<Credit['status'], { backgroundColor: string; color: s
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
 export default function PaymentScreen({ navigation, route }: Props) {
-    const { credit } = route.params;
+    const theme = useTheme()
+    const { credit } = route.params
 
     const pay = userPaymentState(state => state.makePay)
     const isLoading = userPaymentState(state => state.isLoading)
@@ -43,7 +44,7 @@ export default function PaymentScreen({ navigation, route }: Props) {
 
     return (
         <View style={styles.container}>
-            <Card style={styles.card}>
+            <Card style={[styles.card, { backgroundColor: theme.colors.secondaryContainer }]}>
                 <View style={styles.header}>
                     <Icon
                         source="cash-sync"
@@ -61,7 +62,7 @@ export default function PaymentScreen({ navigation, route }: Props) {
                 </View>
             </Card>
 
-            <Card style={styles.card}>
+            <Card style={[styles.card, { backgroundColor: theme.colors.secondaryContainer }]}>
                 {rows.map((row) => (
                     <View key={row.label} style={styles.row}>
                         <Text>{row.label}</Text>

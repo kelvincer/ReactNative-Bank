@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native"
-import { Card, Icon, Text } from "react-native-paper"
+import { Card, Icon, Text, useTheme } from "react-native-paper"
 import { Credit } from "../../domain/Credit"
 
 const formatBalance = (balance: number) =>
@@ -11,9 +11,11 @@ const formatExpiration = (expiration: string | Date) => {
 }
 
 const CreditCard = ({ title, identifier, balance, expiration }: Credit) => {
+    const theme = useTheme()
+
     return (
         <Card
-            style={styles.card}
+            style={[styles.card, { backgroundColor: theme.colors.secondaryContainer }]}
             mode="elevated">
 
             <View style={styles.container}>

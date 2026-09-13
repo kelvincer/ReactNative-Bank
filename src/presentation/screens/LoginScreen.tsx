@@ -32,7 +32,7 @@ export default function LoginScreen({ navigation }: Props) {
         <View style={styles.container}>
 
             <View style={styles.innerContainer}>
-                <Text style={styles.title}>Compartamos Banco</Text>
+                <Text style={styles.title}>Banco</Text>
 
                 <TextInput
                     label="Email"

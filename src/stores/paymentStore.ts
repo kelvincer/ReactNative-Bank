@@ -22,9 +22,6 @@ export const userPaymentState = create<PaymentState>((set, get) => ({
 
             const response = await paymentRequest(request)
 
-            console.log('payment', response)
-            console.log('payment', response.payment)
-
             set({
                 isLoading: false,
                 error: null

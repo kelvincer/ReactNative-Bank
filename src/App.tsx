@@ -11,7 +11,8 @@ const theme = {
   colors: {
     ...DefaultTheme.colors,
     primary: '#D80051',
-    surfaceVariant: '#C0C0C0'
+    surfaceVariant: "#FEF2F2",
+    secondaryContainer: "#FEF2F2"
   },
 };
 
