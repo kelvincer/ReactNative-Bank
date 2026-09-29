@@ -17,25 +17,34 @@ Aplicación móvil de **banca digital** construida con React Native. El usuario 
 
 ## Estructura del proyecto
 
-El código está organizado en capas dentro de `src/`, siguiendo una arquitectura **inspirada en Clean Architecture** (aunque de forma liviana, sin casos de uso ni interfaces de repositorio formales):
+El código está organizado en capas dentro de `src/`, siguiendo una arquitectura **inspirada en Clean Architecture**: los contratos viven en `domain`, las implementaciones en `infrastructure`, y la inyección es manual (factories + composition root), sin casos de uso ni librería de IoC.
 
 ```
 src/
 ├── App.tsx                     # Raíz: theming + NavigationContainer
-├── domain/                     # Tipos puros (entidades y DTOs) — no importa nada
+├── config/
+│   └── env.ts                  # baseURL por entorno (dev / prod)
+├── domain/                     # Tipos puros y contratos — no importa nada
 │   ├── AuthTypes.ts            # User, LoginRequest, LoginResponse
 │   ├── Credit.ts               # Credit, CreditsResponse
-│   └── PayTypes.ts             # PayRequest, PayResponse, Payment
+│   ├── PayTypes.ts             # PayRequest, PayResponse, Payment
+│   └── repositories/           # Puertos: qué necesita la app del exterior
+│       ├── AuthRepository.ts
+│       ├── CreditsRepository.ts
+│       └── PaymentRepository.ts
 ├── infrastructure/
-│   └── network/
-│       ├── api.ts              # Instancia axios + interceptor de auth (Bearer)
-│       ├── AuthService.ts      # POST /login
-│       ├── CreditsService.ts   # GET /credits
-│       └── PaymentService.ts   # POST /payments
+│   ├── di/
+│   │   └── container.ts        # Composition root: une contratos e implementaciones
+│   ├── network/
+│   │   └── api.ts              # createApiClient(baseURL) + interceptor de auth (Bearer)
+│   └── repositories/           # Adaptadores: implementan los puertos con axios
+│       ├── AuthRepositoryImpl.ts    # POST /login
+│       ├── CreditsRepositoryImpl.ts # GET /credits
+│       └── PaymentRepositoryImpl.ts # POST /payments
 ├── stores/                     # Zustand: orquestación + persistencia
-│   ├── authStore.ts            # useAuthStore (sesión, token)
-│   ├── creditsStore.ts         # useCreditsStore (lista + total)
-│   └── paymentStore.ts         # usePaymentStore (pago)
+│   ├── authStore.ts            # createAuthStore(deps) + useAuthStore (sesión, token)
+│   ├── creditsStore.ts         # createCreditsStore(deps) + useCreditsStore (lista + total)
+│   └── paymentStore.ts         # createPaymentStore(deps) + usePaymentStore (pago)
 ├── presentation/
 │   ├── navigation/
 │   │   ├── RootStackParamList.ts  # Tipos de parámetros de navegación
@@ -75,75 +84,111 @@ Como Metro empaqueta con Babel y Babel no lee `tsconfig.json`, el alias está de
 
 ## Arquitectura y flujo de dependencias
 
-La clave del diseño es un **flujo unidireccional** entre capas, con `domain` en el centro:
+La clave del diseño es un **flujo unidireccional** entre capas, con `domain` en el centro. `stores` e `infrastructure` dependen de los contratos de `domain`, nunca al revés:
 
 ```
-presentation  →  stores  →  infrastructure  →  domain (tipos)
-     │              │               │
-     └──────────────┴───────────────┴──►  AXIOS (red / backend :8080)
+presentation  →  stores  →  domain (contratos)  ←  infrastructure
+      │              │                              │
+      │              └──────── container ───────────┘
+      │                       │
+      └───────────────────────┴──►  AXIOS (red / backend)
 ```
 
 | Capa | Responsabilidad | Importa desde |
 | --- | --- | --- |
-| `domain/` | Contratos de datos (`interface` para entidades y request/response) | *(nada)* — capa más interna |
-| `infrastructure/` | Transporte HTTP: servicios que encapsulan los endpoints con axios | `domain/` |
-| `stores/` | Estado global + orquestación (llama servicios, mapea errores, persiste en AsyncStorage) | `domain/`, `infrastructure/` |
+| `domain/` | Contratos: entidades, request/response y **puertos** (`interface AuthRepository`) | *(nada)* — capa más interna |
+| `infrastructure/` | Adaptadores: implementan los puertos sobre axios + el cliente HTTP | `domain/` |
+| `config/` | Constantes de entorno (`baseURL` de dev y prod) | *(nada)* |
+| `stores/` | Estado global + orquestación (llama al puerto inyectado, mapea errores, persiste en AsyncStorage) | `domain/`, `infrastructure/di/container` |
 | `presentation/` | Pantallas, componentes y navegación (UI reactiva a los stores) | `stores/`, `domain/`, `util/` |
 | `util/` | Funciones puras de formato | *(nada)* |
 
 ### Reglas que se cumplen
 
 - **`presentation` nunca importa `infrastructure` directamente**: la UI siempre pasa por los stores. Esto mantiene a la capa de red como un detalle intercambiable.
-- **`domain` es 100% puro**: solo tipos TypeScript, cero dependencias. Es la frontera de inversión de dependencias.
-- **Flujo:** la pantalla ejecuta una acción del store → el store llama al servicio → el servicio usa axios → el resultado tipado vuelve y se guarda en el estado.
-- **Imports por alias `@/`** con la capa explícita en el path. Gracias a esto, la regla de la primera línea se puede verificar por patrón de import (y no solo con grep manual).
+- **`domain` es 100% puro**: solo tipos e interfaces TypeScript, cero dependencias. Es la frontera de inversión de dependencias.
+- **Los stores dependen del contrato, no de axios**: cada uno declara qué puerto necesita (`AuthRepository`, `CreditsRepository`, `PaymentRepository`) y lo recibe por parámetro.
+- **Único punto de Cableado**: `infrastructure/di/container.ts` es el único módulo que conoce a la vez las interfaces y sus implementaciones de axios. Los stores tienen una única línea que lo consumen para exportar la instancia por defecto; todo lo demás es inyectable.
+- **Flujo:** la pantalla ejecuta una acción del store → el store llama al puerto inyectado → el adaptador usa axios → el resultado tipado vuelve y se guarda en el estado.
+- **Imports por alias `@/`** con la capa explícita en el path. Gracias a esto, las reglas de este diagrama se pueden verificar por patrón de import (y no solo con grep manual).
 
 ## Patrones utilizados
 
-### 1. Arquitectura por capas (Clean Architecture liviana)
+### 1. Arquitectura por capas con puertos y adaptadores
 
-Separación `domain / infrastructure / stores / presentation`. A diferencia de una implementación estricta, aquí:
+Separación `domain / infrastructure / stores / presentation`, donde `domain` declara **qué** necesita la app y `infrastructure` decide **cómo** se lo da:
 
-- **No hay interfaces de repositorio** formales (ej. `interface AuthRepository`); los servicios son funciones concretas tipadas contra las interfaces de `domain`.
-- **No hay casos de uso** ni inyección de dependencias (IoC); todo se importa estáticamente.
-- El resultado es pragmático: se obtiene legibilidad y desacoplamiento sin fricción de framework.
+- `domain/repositories/AuthRepository.ts` define el puerto:
+
+  ```ts
+  export interface AuthRepository {
+      login: (credentials: LoginRequest) => Promise<LoginResponse>
+  }
+  ```
+
+- `infrastructure/repositories/AuthRepositoryImpl.ts` lo implementa contra axios, y cumple el contrato de forma explícita en la firma de retorno:
+
+  ```ts
+  export const createAuthRepositoryImpl = (client: AxiosInstance): AuthRepository => ({ ... })
+  ```
+
+- `infrastructure/di/container.ts` es el **composition root**: el único lugar donde se juntan ambos lados.
+
+A diferencia de una implementación estricta, aquí:
+
+- **No hay casos de uso** (use cases) por dominio; la orquestación vive en las acciones de los stores.
+- **No hay inyección automática**: no se usa `tsyringe`/`inversify`. La DI es explícita por constructor, con factories.
+- El resultado es pragmático: se obtiene legibilidad, inversión de dependencias real y tests sin mocks de transporte, sin agregar dependencias.
 
 ### 2. Estado global con Zustand (Bridge / Orchestrator)
 
 Los stores de Zustand son el **puente entre la UI y la red**, y siguen todos la misma forma:
 
 - Estado: `isLoading`, `error`, datos del dominio.
-- Acciones asíncronas que llaman al servicio y actualizan el estado con `set()`.
+- Acciones asíncronas que llaman al puerto inyectado y actualizan el estado con `set()`.
 - **Persistencia**: el token y el usuario se guardan en AsyncStorage (tanto al iniciar sesión como en el interceptor de la request).
 
 Zustand no requiere `Provider` en la raíz; las pantallas consumen estado con selectores, ej. `useAuthStore(state => state.user)`, lo que permite re-renderizados granulares.
 
-**Convención de nombres**: todo store se exporta como `use<Dominio>Store` en `use<Dominio>Store.ts`, y su forma de estado como `interface <Dominio>State`. Así el prefijo `use` se cumple siempre y las llamadas tipo hook quedan cubiertas por la regla *rules-of-hooks* de ESLint.
+**Convención de nombres**: todo store vive en `<dominio>Store.ts`, exporta su hook por defecto como `use<Dominio>Store` y su forma de estado como `interface <Dominio>State`. Así el prefijo `use` se cumple siempre y las llamadas tipo hook quedan cubiertas por la regla *rules-of-hooks* de ESLint.
 
-| Archivo | Hook exportado | Interface |
-| --- | --- | --- |
-| `authStore.ts` | `useAuthStore` | `AuthState` |
-| `creditsStore.ts` | `useCreditsStore` | `CreditsState` |
-| `paymentStore.ts` | `usePaymentStore` | `PaymentState` |
+| Archivo | Factory (inyectable) | Hook por defecto | Interface |
+| --- | --- | --- | --- |
+| `authStore.ts` | `createAuthStore({ authRepository })` | `useAuthStore` | `AuthState` |
+| `creditsStore.ts` | `createCreditsStore({ creditsRepository })` | `useCreditsStore` | `CreditsState` |
+| `paymentStore.ts` | `createPaymentStore({ paymentRepository })` | `usePaymentStore` | `PaymentState` |
 
-### 3. Cliente HTTP único + interceptor de auth
-
-`src/infrastructure/network/api.ts` crea una única instancia de axios:
-
-- `baseURL: 'http://10.0.2.2:8080'` (`10.0.2.2` es el loopback hacia el backend en el emulador Android; el backend corre en el puerto 8080).
-- **Interceptor de request**: lee el token de AsyncStorage y, si existe, añade `Authorization: Bearer <token>` en cada petición. Los servicios no se preocupan por la autenticación.
+El patrón de cada store es: **la factory recibe las dependencias, el hook por defecto es la factory ya cableada con el container**. Las pantallas solo conocen el hook, así que la firma `useAuthStore(state => ...)` no cambia respecto a la versión sin DI.
 
 ```ts
-// Ejemplo de servicio tipado
-const creditsRequest = async (): Promise<CreditsResponse> => {
-  const response = await api.get<CreditsResponse>('/credits');
-  return response.data;
-};
+export const createAuthStore = ({ authRepository }: AuthStoreDependencies) =>
+  create<AuthState>((set) => ({ /* ... acciones ... */ }))
+
+export const useAuthStore = createAuthStore({ authRepository: container.auth })
+```
+
+### 3. Cliente HTTP por factory + interceptor de auth
+
+`src/infrastructure/network/api.ts` exporta `createApiClient(baseURL)`, que devuelve una instancia de axios con el interceptor ya montado. No hay instancia global: el `baseURL` llega como argumento, y lo decide `src/config/env.ts` según `__DEV__`:
+
+- **dev**: `http://10.0.2.2:8080` (`10.0.2.2` es el loopback hacia el host desde el emulador Android).
+- **prod**: `https://api.cb.pe`.
+
+- **Interceptor de request**: lee el token de AsyncStorage y, si existe, añade `Authorization: Bearer <token>` en cada petición. Los adaptadores no se preocupan por la autenticación.
+
+```ts
+// Adaptador tipado contra el contrato de dominio
+export const createCreditsRepositoryImpl = (client: AxiosInstance): CreditsRepository => ({
+  getCredits: async (): Promise<CreditsResponse> => {
+    const response = await client.get<CreditsResponse>('/credits')
+    return response.data
+  },
+})
 ```
 
 ### 4. Convención de manejo de errores
 
-- Los **servicios** lanzan el error de axios sin mapear.
+- Los **adaptadores** lanzan el error de axios sin mapear.
 - Los **stores** lo capturan, intentan leer `error.response?.data?.message` y caen en un mensaje en español por defecto (`'No se pudo iniciar sesión'`, `'Error en el servicio'`).
 
 ### 5. Navegación tipada con parámetros de dominio
@@ -168,37 +213,45 @@ El tema de react-native-paper se define una sola vez en `src/App.tsx` sobre `Def
 
 ## Flujo de funcionalidad (end-to-end)
 
-1. **Login** → `LoginScreen` llama `useAuthStore.login()` → `AuthService.loginRequest()` (`POST /login`) → token + usuario guardados en AsyncStorage → `navigation.replace('Home')`.
-2. **Home / Créditos** → `HomeScreen` llama `useCreditsStore.getCredits()` → `CreditsService.creditsRequest()` (`GET /credits`) → lista renderizada con `CreditCard`; encabezado con el saldo total (`totalAmount`) calculado en el store.
-3. **Detalle / Pago** → `PaymentScreen` recibe el `credit` por parámetro de ruta → `usePaymentStore.makePay({ title, identifier })` → `PaymentService.paymentRequest()` (`POST /payments`) → navega a `Payment` con el objeto `payment`.
+1. **Login** → `LoginScreen` llama `useAuthStore.login()` → `authRepository.login()` (`POST /login`) → token + usuario guardados en AsyncStorage → `navigation.replace('Home')`.
+2. **Home / Créditos** → `HomeScreen` llama `useCreditsStore.getCredits()` → `creditsRepository.getCredits()` (`GET /credits`) → lista renderizada con `CreditCard`; encabezado con el saldo total (`totalAmount`) calculado en el store.
+3. **Detalle / Pago** → `PaymentScreen` recibe el `credit` por parámetro de ruta → `usePaymentStore.makePay({ title, identifier })` → `paymentRepository.makePay()` (`POST /payments`) → navega a `Payment` con el objeto `payment`.
 4. **Constancia** → `PaymentProofScreen` muestra el recibo formateado; "Volver al inicio" resetea el stack a `Home`.
 
 ## Endpoints del backend
 
-| Método | Ruta | Servicio |
-| --- | --- | --- |
-| `POST` | `/login` | `AuthService.ts` |
-| `GET` | `/credits` | `CreditsService.ts` |
-| `POST` | `/payments` | `PaymentService.ts` |
+| Método | Ruta | Puerto (`domain/`) | Adaptador (`infrastructure/`) |
+| --- | --- | --- | --- |
+| `POST` | `/login` | `AuthRepository` | `AuthRepositoryImpl.ts` |
+| `GET` | `/credits` | `CreditsRepository` | `CreditsRepositoryImpl.ts` |
+| `POST` | `/payments` | `PaymentRepository` | `PaymentRepositoryImpl.ts` |
 
 ## Testing
 
-Configuración: Jest con `@react-native/jest-preset`; `transformIgnorePatterns` asegura que se transformen los paquetes ESM de RN/paper/navigation.
+Configuración: Jest con `@react-native/jest-preset`; `transformIgnorePatterns` asegura que se transformen los paquetes ESM de RN/paper/navigation. `testMatch` está acotado a `**/__tests__/**/*.test.[jt]s?(x)` para que los helpers compartidos no se interpreten como suites.
 
 - **`jest.setup.js`** define mocks globales (AsyncStorage en memoria y los iconos Material Design como `<Text>`).
-- **Mocks por archivo**: los tests de red mockean el módulo `api` (la instancia axios) en lugar de axios global o un servidor real. El `jest.mock` usa el mismo alias `@/` que el código de producción:
+- **Los tests de store inyectan fakes, no mockean módulos.** Gracias a las factories, cada test construye su propio store con un repositorio falso, así que quedan aislados del transporte y no dependen de que un `jest.mock` aplique:
 
   ```ts
-  jest.mock('@/infrastructure/network/api', () => ({ api: { post: jest.fn() } }));
+  const authRepository = createFakeAuthRepository()
+  const useTestAuthStore = createAuthStore({ authRepository })
+
+  authRepository.login.mockResolvedValue({ user, token: '1000' })
+  await useTestAuthStore.getState().login({ email: 'test@test.com', password: '123456' })
+
+  expect(useTestAuthStore.getState().token).toBe('1000')
   ```
 
-  Si el string del `jest.mock` y el `import` no coinciden, el mock deja de aplicarse en silencio y el test termina exercising la instancia axios real.
+  Cada test crea su store en el `beforeEach`, así que no hace falta resetear estado con `setState`.
+- **Los tests de los adaptadores inyectan un cliente axios falso** (`createFakeAxiosClient()`) en `createXRepositoryImpl(client)`, en vez de mockear el módulo `api`. Antes esto era un `jest.mock('@/infrastructure/network/api', ...)`; si el string del mock y el `import` no coincidían, el mock dejaba de aplicarse en silencio y el test ejercitaba la instancia real. Con la factory ese riesgo desaparece.
 - Los tests se organizan igual que `src/`:
 
 ```
 __tests__/
 ├── App.test.tsx               # Smoke test de la app completa
-├── api/                       # Servicios (auth, credits, payment)
+├── helpers/                   # Fakes compartidos (cliente axios, repositorios)
+├── infrastructure/            # Adaptadores + cliente HTTP
 ├── store/                     # Stores de Zustand (vía getState/setState)
 └── utils/                     # Formateadores puros
 ```
@@ -211,6 +264,7 @@ npm run start:clean  # Inicia Metro descartando el cache de transformacion
 npm run android      # Build + run en Android
 npm run ios          # Build + run en iOS
 npm run lint         # ESLint
+npm run typecheck    # tsc --noEmit
 npm test             # Jest
 ```
 
@@ -220,4 +274,8 @@ Requiere Node >= 22.11.0.
 
 ## Notas / deudas técnicas
 
-- No existe capa de interfaces de repositorio ni inyección de dependencias (por diseño, ver "Arquitectura").
+- No hay casos de uso (use cases) por dominio: la lógica de orquestación vive dentro de las acciones de los stores, mezclada con el acceso al puerto.
+- Los stores tipan el error como `any` y leen `error.response?.data?.message`: no hay un tipo de error propio de la aplicación.
+- La selección de entorno es binaria (`__DEV__` en `config/env.ts`); no hay archivos `.env` ni variables por build.
+- El `baseURL` de producción (`https://api.cb.pe`) es un valor de ejemplo pendiente de confirmar con el equipo de backend.
+- `api.test.ts` accede a `client.interceptors.request.handlers`, que es interno de axios; si axios cambia su implementación, ese test hay que ajustarlo.

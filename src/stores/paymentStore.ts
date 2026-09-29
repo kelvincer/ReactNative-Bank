@@ -1,6 +1,7 @@
 import { create } from "zustand"
-import { paymentRequest } from "@/infrastructure/network/PaymentService"
 import { PayRequest, PayResponse } from "@/domain/PayTypes"
+import { PaymentRepository } from "@/domain/repositories/PaymentRepository"
+import { container } from "@/infrastructure/di/container"
 
 interface PaymentState {
     isLoading: boolean
@@ -8,7 +9,11 @@ interface PaymentState {
     makePay: (request: PayRequest) => Promise<PayResponse>
 }
 
-export const usePaymentStore = create<PaymentState>((set) => ({
+interface PaymentStoreDependencies {
+    paymentRepository: PaymentRepository
+}
+
+export const createPaymentStore = ({ paymentRepository }: PaymentStoreDependencies) => create<PaymentState>((set) => ({
 
     isLoading: false,
     error: null,
@@ -20,7 +25,7 @@ export const usePaymentStore = create<PaymentState>((set) => ({
                 error: null
             })
 
-            const response = await paymentRequest(request)
+            const response = await paymentRepository.makePay(request)
 
             set({
                 isLoading: false,
@@ -41,3 +46,5 @@ export const usePaymentStore = create<PaymentState>((set) => ({
         }
     }
 }))
+
+export const usePaymentStore = createPaymentStore({ paymentRepository: container.payment })

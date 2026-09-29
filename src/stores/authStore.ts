@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { LoginRequest, User } from "@/domain/AuthTypes"
-import { loginRequest } from "@/infrastructure/network/AuthService"
+import { AuthRepository } from "@/domain/repositories/AuthRepository"
+import { container } from "@/infrastructure/di/container"
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 interface AuthState {
@@ -13,7 +14,11 @@ interface AuthState {
     clearError: () => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+interface AuthStoreDependencies {
+    authRepository: AuthRepository
+}
+
+export const createAuthStore = ({ authRepository }: AuthStoreDependencies) => create<AuthState>((set) => ({
     user: null,
     token: null,
     isLoading: false,
@@ -26,7 +31,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                 error: null
             })
 
-            const response = await loginRequest(credentials)
+            const response = await authRepository.login(credentials)
             await AsyncStorage.setItem('token', response.token);
             await AsyncStorage.setItem(
                 'user',
@@ -69,3 +74,5 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
 }))
+
+export const useAuthStore = createAuthStore({ authRepository: container.auth })

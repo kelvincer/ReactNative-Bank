@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { Credit } from "@/domain/Credit"
-import { creditsRequest } from "@/infrastructure/network/CreditsService"
+import { CreditsRepository } from "@/domain/repositories/CreditsRepository"
+import { container } from "@/infrastructure/di/container"
 
 interface CreditsState {
     isLoading: boolean
@@ -11,7 +12,11 @@ interface CreditsState {
 
 }
 
-export const useCreditsStore = create<CreditsState>((set) => ({
+interface CreditsStoreDependencies {
+    creditsRepository: CreditsRepository
+}
+
+export const createCreditsStore = ({ creditsRepository }: CreditsStoreDependencies) => create<CreditsState>((set) => ({
     isLoading: false,
     error: null,
     totalAmount: 0,
@@ -24,7 +29,7 @@ export const useCreditsStore = create<CreditsState>((set) => ({
                 error: null
             })
 
-            const response = await creditsRequest()
+            const response = await creditsRepository.getCredits()
 
             const total = response.credits.reduce(
                 (sum, product) => sum + product.balance,
@@ -49,3 +54,5 @@ export const useCreditsStore = create<CreditsState>((set) => ({
         }
     }
 }))
+
+export const useCreditsStore = createCreditsStore({ creditsRepository: container.credits })

@@ -1,89 +1,131 @@
-import { api } from "@/infrastructure/network/api";
-import { useAuthStore } from "@/stores/authStore";
+import { AuthRepository } from '@/domain/repositories/AuthRepository'
+import { createAuthStore } from '@/stores/authStore'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { createFakeAuthRepository, toAxiosError } from '../helpers/fakeRepositories'
+
+const user = { id: '1', name: 'name', email: 'email' }
+
+let authRepository: jest.Mocked<AuthRepository>
+let useTestAuthStore: ReturnType<typeof createAuthStore>
+
+beforeEach(async () => {
+  await AsyncStorage.clear()
+  jest.clearAllMocks()
+
+  authRepository = createFakeAuthRepository()
+  useTestAuthStore = createAuthStore({ authRepository })
+})
 
 it('should have initial state', () => {
-	const state = useAuthStore.getState();
+  const state = useTestAuthStore.getState()
 
-	expect(state.token).toBeNull();
-	expect(state.isLoading).toBe(false);
-	expect(state.error).toBeNull();
-});
-
-jest.mock('@/infrastructure/network/api', () => ({
-	api: {
-		post: jest.fn(),
-	},
-}));
-
-const mockedApi = api as jest.Mocked<typeof api>;
-
-beforeEach(() => {
-	useAuthStore.setState({
-		user: null,
-		token: null,
-		isLoading: false,
-		error: null
-	});
-});
+  expect(state.user).toBeNull()
+  expect(state.token).toBeNull()
+  expect(state.isLoading).toBe(false)
+  expect(state.error).toBeNull()
+})
 
 it('should login successfully', async () => {
-	mockedApi.post.mockResolvedValue({
-		data: {
-			user: {
-				id: "1",
-				name: "name",
-				email: "email"
-			},
-			token: "1000"
-		},
-	});
+  authRepository.login.mockResolvedValue({ user, token: '1000' })
 
-	await useAuthStore.getState().login({
-		email: 'test@test.com',
-		password: '123456'
-	});
+  const result = await useTestAuthStore.getState().login({
+    email: 'test@test.com',
+    password: '123456',
+  })
 
-	const finalState = useAuthStore.getState();
-	
-	expect(finalState.token).toBe('1000');
-	expect(finalState.error).toBeNull();
-	expect(finalState.isLoading).toBe(false);
-});
+  const state = useTestAuthStore.getState()
+
+  expect(result).toBe(true)
+  expect(state.user).toEqual(user)
+  expect(state.token).toBe('1000')
+  expect(state.error).toBeNull()
+  expect(state.isLoading).toBe(false)
+})
+
+it('should persist the token and the user', async () => {
+  authRepository.login.mockResolvedValue({ user, token: '1000' })
+
+  await useTestAuthStore.getState().login({
+    email: 'test@test.com',
+    password: '123456',
+  })
+
+  await expect(AsyncStorage.getItem('token')).resolves.toBe('1000')
+  await expect(AsyncStorage.getItem('user')).resolves.toEqual(JSON.stringify(user))
+})
 
 it('should set isLoading true and error null while logging in', async () => {
-	let resolveLogin!: (value: unknown) => void;
-	mockedApi.post.mockReturnValue(
-		new Promise((resolve) => {
-			resolveLogin = resolve;
-		})
-	);
+  let resolveLogin!: (value: { user: typeof user; token: string }) => void
+  authRepository.login.mockReturnValue(
+    new Promise(resolve => {
+      resolveLogin = resolve
+    }),
+  )
 
-	const loginPromise = useAuthStore.getState().login({
-		email: 'test@test.com',
-		password: '123456'
-	});
+  const loginPromise = useTestAuthStore.getState().login({
+    email: 'test@test.com',
+    password: '123456',
+  })
 
-	const state = useAuthStore.getState();
+  const pendingState = useTestAuthStore.getState()
 
-	expect(state.token).toBeNull();
-	expect(state.isLoading).toBe(true);
-	expect(state.error).toBeNull();
+  expect(pendingState.token).toBeNull()
+  expect(pendingState.isLoading).toBe(true)
+  expect(pendingState.error).toBeNull()
 
-	resolveLogin({
-		data: {
-			user: {
-				id: "1",
-				name: "name",
-				email: "email"
-			},
-			token: "1000"
-		},
-	});
+  resolveLogin({ user, token: '1000' })
+  await loginPromise
 
-	await loginPromise;
+  expect(useTestAuthStore.getState().isLoading).toBe(false)
+})
 
-	const finalState = useAuthStore.getState();
+it('should map the backend message when the login fails', async () => {
+  authRepository.login.mockRejectedValue(toAxiosError('Credenciales inválidas'))
 
-	expect(finalState.isLoading).toBe(false);
-	expect(finalState.error).toBeNull();
-});
+  const result = await useTestAuthStore.getState().login({
+    email: 'test@test.com',
+    password: 'wrong',
+  })
+
+  const state = useTestAuthStore.getState()
+
+  expect(result).toBe(false)
+  expect(state.error).toBe('Credenciales inválidas')
+  expect(state.isLoading).toBe(false)
+})
+
+it('should fall back to a default message when the error has no message', async () => {
+  authRepository.login.mockRejectedValue(new Error('Network error'))
+
+  await useTestAuthStore.getState().login({
+    email: 'test@test.com',
+    password: 'wrong',
+  })
+
+  expect(useTestAuthStore.getState().error).toBe('No se pudo iniciar sesión')
+})
+
+it('should clear the session and the persisted data on logout', async () => {
+  authRepository.login.mockResolvedValue({ user, token: '1000' })
+
+  await useTestAuthStore.getState().login({
+    email: 'test@test.com',
+    password: '123456',
+  })
+  await useTestAuthStore.getState().logout()
+
+  const state = useTestAuthStore.getState()
+
+  expect(state.user).toBeNull()
+  expect(state.token).toBeNull()
+  await expect(AsyncStorage.getItem('token')).resolves.toBeNull()
+  await expect(AsyncStorage.getItem('user')).resolves.toBeNull()
+})
+
+it('should clear the error', () => {
+  useTestAuthStore.setState({ error: 'Credenciales inválidas' })
+
+  useTestAuthStore.getState().clearError()
+
+  expect(useTestAuthStore.getState().error).toBeNull()
+})
