@@ -3,21 +3,21 @@ import { CreditsRepository } from '@/domain/repositories/CreditsRepository'
 import { PaymentRepository } from '@/domain/repositories/PaymentRepository'
 
 export const createFakeAuthRepository = (): jest.Mocked<AuthRepository> => ({
-  login: jest.fn(),
+    login: jest.fn(),
 })
 
 export const createFakeCreditsRepository = (): jest.Mocked<CreditsRepository> => ({
-  getCredits: jest.fn(),
+    getCredits: jest.fn(),
 })
 
 export const createFakePaymentRepository = (): jest.Mocked<PaymentRepository> => ({
-  makePay: jest.fn(),
+    makePay: jest.fn(),
 })
 
 export const toAxiosError = (message: string): unknown => ({
-  response: {
-    data: {
-      message,
+    response: {
+        data: {
+            message,
+        },
     },
-  },
 })
