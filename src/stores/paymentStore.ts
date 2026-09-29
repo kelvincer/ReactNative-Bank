@@ -1,6 +1,6 @@
 import { create } from "zustand"
-import { paymentRequest } from "../infrastructure/network/PaymentService"
-import { PayRequest, PayResponse } from "../domain/PayTypes"
+import { paymentRequest } from "@/infrastructure/network/PaymentService"
+import { PayRequest, PayResponse } from "@/domain/PayTypes"
 
 interface PaymentState {
     isLoading: boolean
@@ -8,7 +8,7 @@ interface PaymentState {
     makePay: (request: PayRequest) => Promise<PayResponse>
 }
 
-export const userPaymentState = create<PaymentState>((set, get) => ({
+export const usePaymentStore = create<PaymentState>((set) => ({
 
     isLoading: false,
     error: null,

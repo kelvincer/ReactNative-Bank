@@ -1,6 +1,6 @@
 import { create } from "zustand"
-import { LoginRequest, User } from "../domain/AuthTypes"
-import { loginRequest } from "../infrastructure/network/AuthService"
+import { LoginRequest, User } from "@/domain/AuthTypes"
+import { loginRequest } from "@/infrastructure/network/AuthService"
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 interface AuthState {

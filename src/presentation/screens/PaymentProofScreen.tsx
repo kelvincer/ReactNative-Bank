@@ -1,8 +1,8 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StyleSheet, View } from "react-native"
 import { Button, Icon, Text, useTheme } from "react-native-paper"
-import { RootStackParamList } from "../navigation/RootStackParamList";
-import { formatBalance, formatDate } from "../../util/util";
+import { RootStackParamList } from "@/presentation/navigation/RootStackParamList";
+import { formatBalance, formatDate } from "@/util/util";
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;

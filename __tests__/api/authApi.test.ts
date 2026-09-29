@@ -1,7 +1,7 @@
-import { api } from "../../src/infrastructure/network/api";
-import { loginRequest } from "../../src/infrastructure/network/AuthService";
+import { api } from "@/infrastructure/network/api";
+import { loginRequest } from "@/infrastructure/network/AuthService";
 
-jest.mock('../../src/infrastructure/network/api', () => ({
+jest.mock('@/infrastructure/network/api', () => ({
     api: {
         post: jest.fn(),
     },

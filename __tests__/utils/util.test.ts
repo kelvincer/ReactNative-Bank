@@ -1,4 +1,4 @@
-import { formatBalance, formatDate } from "../../src/util/util";
+import { formatBalance, formatDate } from "@/util/util";
 
 describe('formatBalance', () => {
   it('formats a number with currency prefix', () => {

@@ -1,5 +1,5 @@
-import { LoginRequest, LoginResponse } from "../../domain/AuthTypes";
-import { api } from "./api";
+import { LoginRequest, LoginResponse } from "@/domain/AuthTypes";
+import { api } from "@/infrastructure/network/api";
 
 export const loginRequest = async (
     credentials: LoginRequest,

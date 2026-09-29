@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import AppStack from './presentation/navigation/AppStack';
+import AppStack from '@/presentation/navigation/AppStack';
 import { DefaultTheme, PaperProvider } from 'react-native-paper';
 
 const theme = {

@@ -2,8 +2,8 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Text, TextInput } from "react-native-paper";
-import { RootStackParamList } from "../navigation/RootStackParamList";
-import { useAuthStore } from "../../stores/authStore";
+import { RootStackParamList } from "@/presentation/navigation/RootStackParamList";
+import { useAuthStore } from "@/stores/authStore";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 

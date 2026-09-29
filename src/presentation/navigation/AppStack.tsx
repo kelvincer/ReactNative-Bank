@@ -1,9 +1,9 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import LoginScreen from "../screens/LoginScreen";
-import { RootStackParamList } from "./RootStackParamList";
-import HomeScreen from "../screens/HomeScreen";
-import PaymentScreen from "../screens/PaymentScreen";
-import PaymentProofScreen from "../screens/PaymentProofScreen";
+import LoginScreen from "@/presentation/screens/LoginScreen";
+import { RootStackParamList } from "@/presentation/navigation/RootStackParamList";
+import HomeScreen from "@/presentation/screens/HomeScreen";
+import PaymentScreen from "@/presentation/screens/PaymentScreen";
+import PaymentProofScreen from "@/presentation/screens/PaymentProofScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

@@ -1,5 +1,5 @@
-import { api } from "../../src/infrastructure/network/api";
-import { useAuthStore } from "../../src/stores/authStore";
+import { api } from "@/infrastructure/network/api";
+import { useAuthStore } from "@/stores/authStore";
 
 it('should have initial state', () => {
 	const state = useAuthStore.getState();
@@ -9,7 +9,7 @@ it('should have initial state', () => {
 	expect(state.error).toBeNull();
 });
 
-jest.mock('../../src/infrastructure/network/api', () => ({
+jest.mock('@/infrastructure/network/api', () => ({
 	api: {
 		post: jest.fn(),
 	},

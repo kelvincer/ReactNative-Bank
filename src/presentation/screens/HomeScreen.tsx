@@ -1,20 +1,20 @@
 import { useEffect } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { ActivityIndicator, Text } from "react-native-paper";
-import CreditCard from "../components/CreditCard";
+import CreditCard from "@/presentation/components/CreditCard";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../navigation/RootStackParamList";
-import { useCreditState } from "../../stores/creditsStore";
-import { formatBalance } from "../../util/util";
+import { RootStackParamList } from "@/presentation/navigation/RootStackParamList";
+import { useCreditsStore } from "@/stores/creditsStore";
+import { formatBalance } from "@/util/util";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
-    const credits = useCreditState(state => state.credits)
-    const totalAmount = useCreditState(state => state.totalAmount)
-    const isLoading = useCreditState(state => state.isLoading)
-    const error = useCreditState(state => state.error)
-    const getCredits = useCreditState(state => state.getCredits)
+    const credits = useCreditsStore(state => state.credits)
+    const totalAmount = useCreditsStore(state => state.totalAmount)
+    const isLoading = useCreditsStore(state => state.isLoading)
+    const error = useCreditsStore(state => state.error)
+    const getCredits = useCreditsStore(state => state.getCredits)
 
 
     useEffect(() => {

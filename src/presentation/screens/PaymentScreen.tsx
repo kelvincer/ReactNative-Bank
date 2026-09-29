@@ -1,10 +1,10 @@
 import { StyleSheet, View } from "react-native"
 import { Button, Card, Chip, Icon, Text, useTheme } from "react-native-paper"
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
-import { RootStackParamList } from "../navigation/RootStackParamList"
-import { Credit } from "../../domain/Credit"
-import { formatBalance, formatDate } from "../../util/util"
-import { userPaymentState } from "../../stores/paymentStore"
+import { RootStackParamList } from "@/presentation/navigation/RootStackParamList"
+import { Credit } from "@/domain/Credit"
+import { formatBalance, formatDate } from "@/util/util"
+import { usePaymentStore } from "@/stores/paymentStore"
 
 const statusColors: Record<Credit['status'], { backgroundColor: string; color: string }> = {
     'Activo': { backgroundColor: '#4CAF50', color: '#FFFFFF' },
@@ -17,9 +17,9 @@ export default function PaymentScreen({ navigation, route }: Props) {
     const theme = useTheme()
     const { credit } = route.params
 
-    const pay = userPaymentState(state => state.makePay)
-    const isLoading = userPaymentState(state => state.isLoading)
-    const error = userPaymentState(state => state.error)
+    const pay = usePaymentStore(state => state.makePay)
+    const isLoading = usePaymentStore(state => state.isLoading)
+    const error = usePaymentStore(state => state.error)
 
     const handleSave = async () => {
         const { success, payment } = await pay({

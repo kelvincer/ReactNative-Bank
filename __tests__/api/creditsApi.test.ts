@@ -1,7 +1,7 @@
-import { api } from "../../src/infrastructure/network/api";
-import { creditsRequest } from "../../src/infrastructure/network/CreditsService";
+import { api } from "@/infrastructure/network/api";
+import { creditsRequest } from "@/infrastructure/network/CreditsService";
 
-jest.mock('../../src/infrastructure/network/api', () => ({
+jest.mock('@/infrastructure/network/api', () => ({
     api: {
         get: jest.fn(),
     },

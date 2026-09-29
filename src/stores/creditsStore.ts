@@ -1,6 +1,6 @@
 import { create } from "zustand"
-import { Credit } from "../domain/Credit"
-import { creditsRequest } from "../infrastructure/network/CreditsService"
+import { Credit } from "@/domain/Credit"
+import { creditsRequest } from "@/infrastructure/network/CreditsService"
 
 interface CreditsState {
     isLoading: boolean
@@ -11,7 +11,7 @@ interface CreditsState {
 
 }
 
-export const useCreditState = create<CreditsState>((set) => ({
+export const useCreditsStore = create<CreditsState>((set) => ({
     isLoading: false,
     error: null,
     totalAmount: 0,

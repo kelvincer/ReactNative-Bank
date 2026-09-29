@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native"
 import { Card, Icon, Text, useTheme } from "react-native-paper"
-import { Credit } from "../../domain/Credit"
+import { Credit } from "@/domain/Credit"
 
 const formatBalance = (balance: number) =>
     `S/ ${balance.toLocaleString('es-PE')}`

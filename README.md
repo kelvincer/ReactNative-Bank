@@ -34,8 +34,8 @@ src/
 │       └── PaymentService.ts   # POST /payments
 ├── stores/                     # Zustand: orquestación + persistencia
 │   ├── authStore.ts            # useAuthStore (sesión, token)
-│   ├── creditsStore.ts         # useCreditState (lista + total)
-│   └── paymentStore.ts         # userPaymentState (pago)
+│   ├── creditsStore.ts         # useCreditsStore (lista + total)
+│   └── paymentStore.ts         # usePaymentStore (pago)
 ├── presentation/
 │   ├── navigation/
 │   │   ├── RootStackParamList.ts  # Tipos de parámetros de navegación
@@ -50,6 +50,28 @@ src/
 └── util/
     └── util.ts                 # Formateadores puros (es-PE)
 ```
+
+### Alias de imports
+
+Todo import interno usa el alias `@/` en lugar de rutas relativas:
+
+```ts
+import { useCreditsStore } from "@/stores/creditsStore";
+import { Credit } from "@/domain/Credit";
+import { formatBalance } from "@/util/util";
+```
+
+`@/` apunta a `src/` y **el path conserva la capa** (`@/stores/...`, `@/domain/...`), de modo que la dependencia entre capas queda explícita en el import en vez de codificarse en los saltos `../../`.
+
+Como Metro empaqueta con Babel y Babel no lee `tsconfig.json`, el alias está declarado en los tres puntos de la cadena:
+
+| Archivo |Ajuste | Para qué sirve |
+| --- | --- | --- |
+| `tsconfig.json` | `compilerOptions.paths` | Resolución de tipos en el IDE y en `tsc` |
+| `babel.config.js` | `babel-plugin-module-resolver` | Resolución real en el bundle de Metro |
+| `jest.config.js` | `moduleNameMapper` | Resolución en los tests |
+
+> Ojo: los `paths` de TypeScript se borran al compilar. Si solo se configura `tsconfig.json`, el IDE lo resuelve pero la app revienta en runtime. Las tres piezas van juntas.
 
 ## Arquitectura y flujo de dependencias
 
@@ -74,6 +96,7 @@ presentation  →  stores  →  infrastructure  →  domain (tipos)
 - **`presentation` nunca importa `infrastructure` directamente**: la UI siempre pasa por los stores. Esto mantiene a la capa de red como un detalle intercambiable.
 - **`domain` es 100% puro**: solo tipos TypeScript, cero dependencias. Es la frontera de inversión de dependencias.
 - **Flujo:** la pantalla ejecuta una acción del store → el store llama al servicio → el servicio usa axios → el resultado tipado vuelve y se guarda en el estado.
+- **Imports por alias `@/`** con la capa explícita en el path. Gracias a esto, la regla de la primera línea se puede verificar por patrón de import (y no solo con grep manual).
 
 ## Patrones utilizados
 
@@ -94,6 +117,14 @@ Los stores de Zustand son el **puente entre la UI y la red**, y siguen todos la 
 - **Persistencia**: el token y el usuario se guardan en AsyncStorage (tanto al iniciar sesión como en el interceptor de la request).
 
 Zustand no requiere `Provider` en la raíz; las pantallas consumen estado con selectores, ej. `useAuthStore(state => state.user)`, lo que permite re-renderizados granulares.
+
+**Convención de nombres**: todo store se exporta como `use<Dominio>Store` en `use<Dominio>Store.ts`, y su forma de estado como `interface <Dominio>State`. Así el prefijo `use` se cumple siempre y las llamadas tipo hook quedan cubiertas por la regla *rules-of-hooks* de ESLint.
+
+| Archivo | Hook exportado | Interface |
+| --- | --- | --- |
+| `authStore.ts` | `useAuthStore` | `AuthState` |
+| `creditsStore.ts` | `useCreditsStore` | `CreditsState` |
+| `paymentStore.ts` | `usePaymentStore` | `PaymentState` |
 
 ### 3. Cliente HTTP único + interceptor de auth
 
@@ -138,8 +169,8 @@ El tema de react-native-paper se define una sola vez en `src/App.tsx` sobre `Def
 ## Flujo de funcionalidad (end-to-end)
 
 1. **Login** → `LoginScreen` llama `useAuthStore.login()` → `AuthService.loginRequest()` (`POST /login`) → token + usuario guardados en AsyncStorage → `navigation.replace('Home')`.
-2. **Home / Créditos** → `HomeScreen` llama `useCreditState.getCredits()` → `CreditsService.creditsRequest()` (`GET /credits`) → lista renderizada con `CreditCard`; encabezado con el saldo total (`totalAmount`) calculado en el store.
-3. **Detalle / Pago** → `PaymentScreen` recibe el `credit` por parámetro de ruta → `userPaymentState.makePay({ title, identifier })` → `PaymentService.paymentRequest()` (`POST /payments`) → navega a `Payment` con el objeto `payment`.
+2. **Home / Créditos** → `HomeScreen` llama `useCreditsStore.getCredits()` → `CreditsService.creditsRequest()` (`GET /credits`) → lista renderizada con `CreditCard`; encabezado con el saldo total (`totalAmount`) calculado en el store.
+3. **Detalle / Pago** → `PaymentScreen` recibe el `credit` por parámetro de ruta → `usePaymentStore.makePay({ title, identifier })` → `PaymentService.paymentRequest()` (`POST /payments`) → navega a `Payment` con el objeto `payment`.
 4. **Constancia** → `PaymentProofScreen` muestra el recibo formateado; "Volver al inicio" resetea el stack a `Home`.
 
 ## Endpoints del backend
@@ -155,7 +186,13 @@ El tema de react-native-paper se define una sola vez en `src/App.tsx` sobre `Def
 Configuración: Jest con `@react-native/jest-preset`; `transformIgnorePatterns` asegura que se transformen los paquetes ESM de RN/paper/navigation.
 
 - **`jest.setup.js`** define mocks globales (AsyncStorage en memoria y los iconos Material Design como `<Text>`).
-- **Mocks por archivo**: los tests de red mockean el módulo `api` (la instancia axios) en lugar de axios global o un servidor real.
+- **Mocks por archivo**: los tests de red mockean el módulo `api` (la instancia axios) en lugar de axios global o un servidor real. El `jest.mock` usa el mismo alias `@/` que el código de producción:
+
+  ```ts
+  jest.mock('@/infrastructure/network/api', () => ({ api: { post: jest.fn() } }));
+  ```
+
+  Si el string del `jest.mock` y el `import` no coinciden, el mock deja de aplicarse en silencio y el test termina exercising la instancia axios real.
 - Los tests se organizan igual que `src/`:
 
 ```
@@ -170,6 +207,7 @@ __tests__/
 
 ```sh
 npm start            # Inicia Metro
+npm run start:clean  # Inicia Metro descartando el cache de transformacion
 npm run android      # Build + run en Android
 npm run ios          # Build + run en iOS
 npm run lint         # ESLint
@@ -178,9 +216,9 @@ npm test             # Jest
 
 Requiere Node >= 22.11.0.
 
+> **Despues de tocar `babel.config.js`**, use `npm run start:clean`. Metro cachea el resultado de la transformacion por archivo, asi que un dev server ya iniciado sigue sirviendo la version anterior de los imports y falla con `Unable to resolve module @/...` aunque la configuracion sea correcta.
+
 ## Notas / deudas técnicas
 
-- Nombres de stores inconsistentes: `useAuthStore`, `useCreditState`, `userPaymentState`.
 - Duplicación menor de utilidades de formato en `CreditCard.tsx` (definidas inline) frente a `src/util/util.ts`.
-- No hay path aliases en `tsconfig.json`; todos los imports son relativos.
 - No existe capa de interfaces de repositorio ni inyección de dependencias (por diseño, ver "Arquitectura").
