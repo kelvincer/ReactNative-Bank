@@ -1,14 +1,7 @@
 import { StyleSheet, View } from "react-native"
 import { Card, Icon, Text, useTheme } from "react-native-paper"
 import { Credit } from "@/domain/Credit"
-
-const formatBalance = (balance: number) =>
-    `S/ ${balance.toLocaleString('es-PE')}`
-
-const formatExpiration = (expiration: string | Date) => {
-    const date = expiration instanceof Date ? expiration : new Date(expiration)
-    return date.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+import { formatBalance, formatDate } from "@/util/util"
 
 const CreditCard = ({ title, identifier, balance, expiration }: Credit) => {
     const theme = useTheme()
@@ -45,7 +38,7 @@ const CreditCard = ({ title, identifier, balance, expiration }: Credit) => {
                             Próximo vencimiento
                         </Text>
                         <Text style={styles.value}>
-                            {formatExpiration(expiration)}
+                            {formatDate(expiration)}
                         </Text>
                     </View>
 

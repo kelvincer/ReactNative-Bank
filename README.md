@@ -220,5 +220,4 @@ Requiere Node >= 22.11.0.
 
 ## Notas / deudas técnicas
 
-- Duplicación menor de utilidades de formato en `CreditCard.tsx` (definidas inline) frente a `src/util/util.ts`.
 - No existe capa de interfaces de repositorio ni inyección de dependencias (por diseño, ver "Arquitectura").
