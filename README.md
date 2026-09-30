@@ -23,7 +23,7 @@ El código está organizado en capas dentro de `src/`, siguiendo una arquitectur
 src/
 ├── App.tsx                     # Raíz: theming + NavigationContainer
 ├── config/
-│   └── env.ts                  # baseURL por entorno (dev / prod)
+│   └── env.ts                  # baseURL por entorno (inyectado desde .env en build)
 ├── domain/                     # Tipos puros y contratos — no importa nada
 │   ├── AuthTypes.ts            # User, LoginRequest, LoginResponse
 │   ├── Credit.ts               # Credit, CreditsResponse
@@ -82,6 +82,39 @@ Como Metro empaqueta con Babel y Babel no lee `tsconfig.json`, el alias está de
 | `jest.config.js` | `moduleNameMapper` | Resolución en los tests |
 
 > Ojo: los `paths` de TypeScript se borran al compilar. Si solo se configura `tsconfig.json`, el IDE lo resuelve pero la app revienta en runtime. Las tres piezas van juntas.
+
+### Configuración por entorno
+
+`src/config/env.ts` no tiene URLs escritas a mano: importa de `@env`, un **módulo virtual** que crea `react-native-dotenv` (plugin de Babel) y reemplaza por el valor leído de los archivos `.env` **antes de compilar**. En runtime no existe `process.env`, por eso el import tiene que pasar por el plugin:
+
+```ts
+// src/config/env.ts
+import { API_BASE_URL } from '@env'
+
+export const env = {
+  apiBaseUrl: API_BASE_URL,
+}
+```
+
+| Archivo | Entorno | Valor |
+| --- | --- | --- |
+| `.env` | desarrollo: Metro, builds debug y Jest | `http://10.0.2.2:8080` |
+| `.env.staging` | homologación | `https://api.staging.cb.pe` |
+| `.env.production` | producción: build release | `https://api.cb.pe` |
+
+Cómo se elige el archivo:
+
+- **Desarrollo**: sin `APP_ENV`, el plugin carga solo `.env`. `10.0.2.2` es el loopback hacia el host visto desde el emulador de Android.
+- **Staging**: con `APP_ENV=staging` el plugin carga además `.env.staging`, que pisa el valor de `.env`. Los scripts `start:staging`, `android:staging` e `ios:staging` ya lo setean con `cross-env`, necesario en Windows, donde `APP_ENV=staging ...` no funciona en `cmd`.
+- **Producción**: se selecciona sola. El CLI de React Native fija `NODE_ENV=production` en los builds release, y el plugin carga el archivo de ese modo, `.env.production`.
+
+Precedencia de menor a mayor: `.env` → `.env.local` → `.env.<modo>` → `.env.<modo>.local` → variables del shell o del CI. Si tenés `API_BASE_URL` exportada en tu máquina, esa gana sobre los archivos.
+
+Dos guardas en el plugin (`babel.config.js`): `allowlist: ['API_BASE_URL']` rechaza cualquier otra clave, y `allowUndefined: false` hace fallar el build si la clave no existe en el `.env` del entorno, en vez de dejar `undefined` en la app. Los tipos de `@env` están declarados a mano en `types/env.d.ts`.
+
+Los `.env` van versionados a propósito: sus valores quedan inline en el bundle, así que son públicos. **Nunca** pongas secretos ahí; para eso, backend.
+
+> Igual que tras tocar `babel.config.js`, cambiar de entorno con el dev server ya corriendo no se ve: Metro no invalida su caché por variables de entorno. Detené el server y usá `npm run start:staging:clean` (o `android:staging:clean`, que borra el caché y levanta el server de staging). Borrar el caché no alcanza si hay un Metro viejo ocupando el 8081: ese proceso sigue sirviendo su bundle desde memoria, así que hay que cerrarlo. En build debug el JS lo sirve Metro, no el build, así que el que decide el entorno es el server.
 
 ## Arquitectura y flujo de dependencias
 
@@ -170,10 +203,7 @@ export const useAuthStore = createAuthStore({ authRepository: container.auth })
 
 ### 3. Cliente HTTP por factory + interceptor de auth
 
-`src/infrastructure/network/api.ts` exporta `createApiClient(baseURL)`, que devuelve una instancia de axios con el interceptor ya montado. No hay instancia global: el `baseURL` llega como argumento, y lo decide `src/config/env.ts` según `__DEV__`:
-
-- **dev**: `http://10.0.2.2:8080` (`10.0.2.2` es el loopback hacia el host desde el emulador Android).
-- **prod**: `https://api.cb.pe`.
+`src/infrastructure/network/api.ts` exporta `createApiClient(baseURL)`, que devuelve una instancia de axios con el interceptor ya montado. No hay instancia global: el `baseURL` llega como argumento y sale de `src/config/env.ts` (ver [Configuración por entorno](#configuración-por-entorno)).
 
 - **Interceptor de request**: lee el token de AsyncStorage y, si existe, añade `Authorization: Bearer <token>` en cada petición. Los adaptadores no se preocupan por la autenticación.
 
@@ -268,12 +298,14 @@ Configuración: Jest con `@react-native/jest-preset`; `transformIgnorePatterns` 
   Cada test crea su store en el `beforeEach`, así que no hace falta resetear estado con `setState`.
 - **Los tests de los adaptadores inyectan un cliente axios falso** (`createFakeAxiosClient()`) en `createXRepositoryImpl(client)`, en vez de mockear el módulo `api`. Antes esto era un `jest.mock('@/infrastructure/network/api', ...)`; si el string del mock y el `import` no coincidían, el mock dejaba de aplicarse en silencio y el test ejercitaba la instancia real. Con la factory ese riesgo desaparece.
 - **Los tests de `domain/` cubren `resolveErrorMessage`** con el cuerpo que manda el backend, con cuerpos incompletos o con otra forma y con rechazos que no son objetos (`string`, `null`, `undefined`). Los stores agregan un caso por encima: que caigan al texto por defecto en vez de lanzar.
+- **El test de `config/env`** comprueba que `@env` llegó inline desde el `.env`. Si el plugin de Babel dejara de aplicarse, el import virtual no resolvería y el test falla, en vez de dejar la app sin `baseURL`.
 - Los tests se organizan igual que `src/`:
 
 ```
 __tests__/
 ├── App.test.tsx               # Smoke test de la app completa
 ├── helpers/                   # Fakes compartidos (cliente axios, repositorios)
+├── config/                    # env inyectado desde .env
 ├── domain/                    # Traducción de errores a mensaje
 ├── infrastructure/            # Adaptadores + cliente HTTP
 ├── store/                     # Stores de Zustand (vía getState/setState)
@@ -283,13 +315,19 @@ __tests__/
 ## Scripts
 
 ```sh
-npm start            # Inicia Metro
-npm run start:clean  # Inicia Metro descartando el cache de transformacion
-npm run android      # Build + run en Android
-npm run ios          # Build + run en iOS
-npm run lint         # ESLint
-npm run typecheck    # tsc --noEmit
-npm test             # Jest
+npm start                # Inicia Metro (dev)
+npm run start:clean      # Inicia Metro descartando el cache de transformacion
+npm run start:staging    # Inicia Metro con APP_ENV=staging
+npm run start:staging:clean  # Igual, con el cache de transformacion limpio
+npm run metro:clean      # Borra el cache de Metro (%TEMP%/metro-cache)
+npm run android          # Build + run en Android (dev)
+npm run android:staging  # Build + run en Android (staging)
+npm run android:staging:clean  # Borra el cache y corre en Android con staging
+npm run ios              # Build + run en iOS (dev)
+npm run ios:staging      # Build + run en iOS (staging)
+npm run lint             # ESLint
+npm run typecheck        # tsc --noEmit
+npm test                 # Jest
 ```
 
 Requiere Node >= 22.11.0.
@@ -299,6 +337,5 @@ Requiere Node >= 22.11.0.
 ## Notas / deudas técnicas
 
 - No hay casos de uso (use cases) por dominio: la lógica de orquestación vive dentro de las acciones de los stores, mezclada con el acceso al puerto.
-- La selección de entorno es binaria (`__DEV__` en `config/env.ts`); no hay archivos `.env` ni variables por build.
-- El `baseURL` de producción (`https://api.cb.pe`) es un valor de ejemplo pendiente de confirmar con el equipo de backend.
+- El `baseURL` de `.env.production` (`https://api.cb.pe`) y el de `.env.staging` (`https://api.staging.cb.pe`) son valores de ejemplo pendientes de confirmar con el equipo de backend.
 - `api.test.ts` accede a `client.interceptors.request.handlers`, que es interno de axios; si axios cambia su implementación, ese test hay que ajustarlo.
