@@ -1,16 +1,16 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Session, SessionStorage } from '@/domain/SessionStorage'
+import { createMMKV } from 'react-native-mmkv'
 
 export const SESSION_TOKEN_KEY = 'token'
-export const SESSION_USER_KEY = 'user'
+
+export const storage = createMMKV()
 
 /**
- * Adaptador del puerto de sesion sobre AsyncStorage. Las claves viven aqui y
- * no en el dominio, que solo ve el puerto.
+ * Adaptador del puerto de sesion sobre MMKV. Las claves viven aqui y no en el
+ * dominio, que solo ve el puerto.
  */
 export const createSessionStorageImpl = (): SessionStorage => ({
-    save: async ({ user, token }: Session) => {
-        await AsyncStorage.setItem(SESSION_TOKEN_KEY, token)
-        await AsyncStorage.setItem(SESSION_USER_KEY, JSON.stringify(user))
+    save: async ({ token }: Session) => {
+        storage.set(SESSION_TOKEN_KEY, token)
     },
 })

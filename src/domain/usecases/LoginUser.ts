@@ -21,7 +21,7 @@ const FALLBACK_MESSAGE = 'No se pudo iniciar sesión'
 export const createLoginUser = ({ authRepository, sessionStorage }: LoginUserDependencies): LoginUser =>
     async credentials => runUseCase(async () => {
         const response = await authRepository.login(credentials)
-        const session: Session = { user: response.user, token: response.token }
+        const session: Session = { token: response.token }
 
         await sessionStorage.save(session)
 

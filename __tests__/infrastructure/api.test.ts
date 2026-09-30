@@ -1,7 +1,6 @@
 import { AxiosAdapter, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { createApiClient } from '@/infrastructure/network/api'
-import { SESSION_TOKEN_KEY } from '@/infrastructure/storage/SessionStorageImpl'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { SESSION_TOKEN_KEY, storage } from '@/infrastructure/storage/SessionStorageImpl'
 
 /**
  * Ejecuta una peticion real contra el cliente y devuelve la config que llego al
@@ -31,6 +30,11 @@ const sendRequestAndCaptureConfig = async (
     return config
 }
 
+beforeEach(() => {
+    storage.clearAll()
+    jest.clearAllMocks()
+})
+
 it('should build the client with the given base URL', () => {
     const client = createApiClient('http://test.local:8080')
 
@@ -40,7 +44,7 @@ it('should build the client with the given base URL', () => {
 })
 
 it('should attach the stored token to the request', async () => {
-    await AsyncStorage.setItem(SESSION_TOKEN_KEY, '1000')
+    storage.set(SESSION_TOKEN_KEY, '1000')
 
     const config = await sendRequestAndCaptureConfig(createApiClient('http://test.local:8080'))
 
@@ -48,7 +52,7 @@ it('should attach the stored token to the request', async () => {
 })
 
 it('should not attach an authorization header without a token', async () => {
-    await AsyncStorage.removeItem(SESSION_TOKEN_KEY)
+    storage.remove(SESSION_TOKEN_KEY)
 
     const config = await sendRequestAndCaptureConfig(createApiClient('http://test.local:8080'))
 

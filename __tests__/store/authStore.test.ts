@@ -5,8 +5,6 @@ import { createAuthStore } from '@/stores/authStore'
 import { createFakeAuthRepository, toAxiosError } from '../helpers/fakeRepositories'
 import { createFakeSessionStorage } from '../helpers/fakeSessionStorage'
 
-const user = { id: '1', name: 'name', email: 'email' }
-
 let authRepository: jest.Mocked<AuthRepository>
 let sessionStorage: jest.Mocked<SessionStorage>
 let useTestAuthStore: ReturnType<typeof createAuthStore>
@@ -24,14 +22,13 @@ beforeEach(() => {
 it('should have initial state', () => {
     const state = useTestAuthStore.getState()
 
-    expect(state.user).toBeNull()
     expect(state.token).toBeNull()
     expect(state.isLoading).toBe(false)
     expect(state.error).toBeNull()
 })
 
 it('should login successfully', async () => {
-    authRepository.login.mockResolvedValue({ user, token: '1000' })
+    authRepository.login.mockResolvedValue({ token: '1000' })
 
     const result = await useTestAuthStore.getState().login({
         email: 'test@test.com',
@@ -41,14 +38,13 @@ it('should login successfully', async () => {
     const state = useTestAuthStore.getState()
 
     expect(result).toBe(true)
-    expect(state.user).toEqual(user)
     expect(state.token).toBe('1000')
     expect(state.error).toBeNull()
     expect(state.isLoading).toBe(false)
 })
 
 it('should set isLoading true and error null while logging in', async () => {
-    let resolveLogin!: (value: { user: typeof user; token: string }) => void
+    let resolveLogin!: (value: { token: string }) => void
     authRepository.login.mockReturnValue(
         new Promise(resolve => {
             resolveLogin = resolve
@@ -66,7 +62,7 @@ it('should set isLoading true and error null while logging in', async () => {
     expect(pendingState.isLoading).toBe(true)
     expect(pendingState.error).toBeNull()
 
-    resolveLogin({ user, token: '1000' })
+    resolveLogin({ token: '1000' })
     await loginPromise
 
     expect(useTestAuthStore.getState().isLoading).toBe(false)

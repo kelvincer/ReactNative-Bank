@@ -4,7 +4,6 @@ import { SessionStorage } from '@/domain/SessionStorage'
 import { createFakeAuthRepository, toAxiosError } from '../helpers/fakeRepositories'
 import { createFakeSessionStorage } from '../helpers/fakeSessionStorage'
 
-const user = { id: '1', name: 'name', email: 'email' }
 const credentials = { email: 'test@test.com', password: '123456' }
 
 let authRepository: jest.Mocked<AuthRepository>
@@ -19,16 +18,16 @@ beforeEach(() => {
     loginUser = createLoginUser({ authRepository, sessionStorage })
 })
 
-it('should return the session of the logged user', async () => {
-    authRepository.login.mockResolvedValue({ user, token: '1000' })
+it('should return the token of the logged user', async () => {
+    authRepository.login.mockResolvedValue({ token: '1000' })
 
     const result = await loginUser(credentials)
 
-    expect(result).toEqual({ ok: true, value: { user, token: '1000' } })
+    expect(result).toEqual({ ok: true, value: { token: '1000' } })
 })
 
 it('should ask the repository with the given credentials', async () => {
-    authRepository.login.mockResolvedValue({ user, token: '1000' })
+    authRepository.login.mockResolvedValue({ token: '1000' })
 
     await loginUser(credentials)
 
@@ -36,11 +35,11 @@ it('should ask the repository with the given credentials', async () => {
 })
 
 it('should persist the session', async () => {
-    authRepository.login.mockResolvedValue({ user, token: '1000' })
+    authRepository.login.mockResolvedValue({ token: '1000' })
 
     await loginUser(credentials)
 
-    expect(sessionStorage.save).toHaveBeenCalledWith({ user, token: '1000' })
+    expect(sessionStorage.save).toHaveBeenCalledWith({ token: '1000' })
 })
 
 it('should not persist anything when the login fails', async () => {

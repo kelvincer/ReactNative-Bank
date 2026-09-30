@@ -1,10 +1,9 @@
 import { create } from "zustand"
-import { LoginRequest, User } from "@/domain/AuthTypes"
+import { LoginRequest } from "@/domain/AuthTypes"
 import { LoginUser } from "@/domain/usecases/LoginUser"
 import { container } from "@/infrastructure/di/container"
 
 interface AuthState {
-    user: User | null
     token: string | null
     isLoading: boolean
     error: string | null
@@ -17,7 +16,6 @@ interface AuthStoreDependencies {
 }
 
 export const createAuthStore = ({ loginUser }: AuthStoreDependencies) => create<AuthState>((set) => ({
-    user: null,
     token: null,
     isLoading: false,
     error: null,
@@ -39,7 +37,6 @@ export const createAuthStore = ({ loginUser }: AuthStoreDependencies) => create<
         }
 
         set({
-            user: result.value.user,
             token: result.value.token,
             isLoading: false,
             error: null
