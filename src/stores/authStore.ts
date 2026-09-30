@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { resolveErrorMessage } from "@/domain/AppError"
 import { LoginRequest, User } from "@/domain/AuthTypes"
 import { AuthRepository } from "@/domain/repositories/AuthRepository"
 import { container } from "@/infrastructure/di/container"
@@ -47,12 +48,10 @@ export const createAuthStore = ({ authRepository }: AuthStoreDependencies) => cr
 
             return true
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             set({
                 isLoading: false,
-                error:
-                    error.response?.data?.message ??
-                    'No se pudo iniciar sesión',
+                error: resolveErrorMessage(error, 'No se pudo iniciar sesión'),
             })
 
             return false

@@ -28,6 +28,7 @@ src/
 │   ├── AuthTypes.ts            # User, LoginRequest, LoginResponse
 │   ├── Credit.ts               # Credit, CreditsResponse
 │   ├── PayTypes.ts             # PayRequest, PayResponse, Payment
+│   ├── AppError.ts             # ApiErrorBody + resolveErrorMessage(error → mensaje)
 │   └── repositories/           # Puertos: qué necesita la app del exterior
 │       ├── AuthRepository.ts
 │       ├── CreditsRepository.ts
@@ -189,7 +190,28 @@ export const createCreditsRepositoryImpl = (client: AxiosInstance): CreditsRepos
 ### 4. Convención de manejo de errores
 
 - Los **adaptadores** lanzan el error de axios sin mapear.
-- Los **stores** lo capturan, intentan leer `error.response?.data?.message` y caen en un mensaje en español por defecto (`'No se pudo iniciar sesión'`, `'Error en el servicio'`).
+- Los **stores** lo capturan como `unknown` y lo pasan por `resolveErrorMessage(error, fallback)` de `domain/AppError`. Esa función es la única que conoce la forma del fallo: lee el mensaje del backend (`{ "message": "Correo o contraseña incorrecto" }`, que el cliente HTTP expone en `response.data`) y, si no hay mensaje usable, devuelve el texto en español por defecto del store (`'No se pudo iniciar sesión'`, `'Error en el servicio'`).
+- El estado sigue exponiendo `error: string | null`, porque la UI solo necesita el texto ya listo para pintar; el error crudo nunca sale del store.
+
+```ts
+// src/domain/AppError.ts
+export const resolveErrorMessage = (error: unknown, fallback: string): string =>
+    readApiErrorMessage(error) ?? fallback
+```
+
+```ts
+// src/stores/authStore.ts
+} catch (error: unknown) {
+    set({
+        isLoading: false,
+        error: resolveErrorMessage(error, 'No se pudo iniciar sesión'),
+    })
+
+    return false
+}
+```
+
+Ventajas frente a leer `error.response?.data?.message` en cada store: desaparece el `any` (el `catch` es `unknown` y se valida con type guards), la forma del error se declara una vez como contrato (`ApiErrorBody`) y el fallback queda explícito en la llamada. Un rechazo que no sea un objeto (un string, `null`, un timeout) también cae al texto por defecto en vez de romper.
 
 ### 5. Navegación tipada con parámetros de dominio
 
@@ -245,12 +267,14 @@ Configuración: Jest con `@react-native/jest-preset`; `transformIgnorePatterns` 
 
   Cada test crea su store en el `beforeEach`, así que no hace falta resetear estado con `setState`.
 - **Los tests de los adaptadores inyectan un cliente axios falso** (`createFakeAxiosClient()`) en `createXRepositoryImpl(client)`, en vez de mockear el módulo `api`. Antes esto era un `jest.mock('@/infrastructure/network/api', ...)`; si el string del mock y el `import` no coincidían, el mock dejaba de aplicarse en silencio y el test ejercitaba la instancia real. Con la factory ese riesgo desaparece.
+- **Los tests de `domain/` cubren `resolveErrorMessage`** con el cuerpo que manda el backend, con cuerpos incompletos o con otra forma y con rechazos que no son objetos (`string`, `null`, `undefined`). Los stores agregan un caso por encima: que caigan al texto por defecto en vez de lanzar.
 - Los tests se organizan igual que `src/`:
 
 ```
 __tests__/
 ├── App.test.tsx               # Smoke test de la app completa
 ├── helpers/                   # Fakes compartidos (cliente axios, repositorios)
+├── domain/                    # Traducción de errores a mensaje
 ├── infrastructure/            # Adaptadores + cliente HTTP
 ├── store/                     # Stores de Zustand (vía getState/setState)
 └── utils/                     # Formateadores puros
@@ -275,7 +299,6 @@ Requiere Node >= 22.11.0.
 ## Notas / deudas técnicas
 
 - No hay casos de uso (use cases) por dominio: la lógica de orquestación vive dentro de las acciones de los stores, mezclada con el acceso al puerto.
-- Los stores tipan el error como `any` y leen `error.response?.data?.message`: no hay un tipo de error propio de la aplicación.
 - La selección de entorno es binaria (`__DEV__` en `config/env.ts`); no hay archivos `.env` ni variables por build.
 - El `baseURL` de producción (`https://api.cb.pe`) es un valor de ejemplo pendiente de confirmar con el equipo de backend.
 - `api.test.ts` accede a `client.interceptors.request.handlers`, que es interno de axios; si axios cambia su implementación, ese test hay que ajustarlo.

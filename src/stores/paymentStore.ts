@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { resolveErrorMessage } from "@/domain/AppError"
 import { PayRequest, PayResponse } from "@/domain/PayTypes"
 import { PaymentRepository } from "@/domain/repositories/PaymentRepository"
 import { container } from "@/infrastructure/di/container"
@@ -33,12 +34,10 @@ export const createPaymentStore = ({ paymentRepository }: PaymentStoreDependenci
             })
 
             return { success: true, payment: response.payment }
-        } catch (error: any) {
+        } catch (error: unknown) {
             set({
                 isLoading: false,
-                error:
-                    error.response?.data?.message ??
-                    'Error en el servicio',
+                error: resolveErrorMessage(error, 'Error en el servicio'),
             })
 
             return { success: false, payment: null }

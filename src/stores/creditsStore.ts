@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { resolveErrorMessage } from "@/domain/AppError"
 import { Credit } from "@/domain/Credit"
 import { CreditsRepository } from "@/domain/repositories/CreditsRepository"
 import { container } from "@/infrastructure/di/container"
@@ -43,12 +44,10 @@ export const createCreditsStore = ({ creditsRepository }: CreditsStoreDependenci
                 error: null
             })
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             set({
                 isLoading: false,
-                error:
-                    error.response?.data?.message ??
-                    'Error en el servicio',
+                error: resolveErrorMessage(error, 'Error en el servicio'),
             })
 
         }

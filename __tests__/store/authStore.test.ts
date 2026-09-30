@@ -105,6 +105,17 @@ it('should fall back to a default message when the error has no message', async 
     expect(useTestAuthStore.getState().error).toBe('No se pudo iniciar sesión')
 })
 
+it('should fall back to a default message when the rejection is not an error object', async () => {
+    authRepository.login.mockRejectedValue('timeout')
+
+    await useTestAuthStore.getState().login({
+        email: 'test@test.com',
+        password: 'wrong',
+    })
+
+    expect(useTestAuthStore.getState().error).toBe('No se pudo iniciar sesión')
+})
+
 it('should clear the session and the persisted data on logout', async () => {
     authRepository.login.mockResolvedValue({ user, token: '1000' })
 
