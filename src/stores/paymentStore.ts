@@ -1,7 +1,6 @@
 import { create } from "zustand"
-import { resolveErrorMessage } from "@/domain/AppError"
 import { PayRequest, PayResponse } from "@/domain/PayTypes"
-import { PaymentRepository } from "@/domain/repositories/PaymentRepository"
+import { PayCredit } from "@/domain/usecases/PayCredit"
 import { container } from "@/infrastructure/di/container"
 
 interface PaymentState {
@@ -11,39 +10,37 @@ interface PaymentState {
 }
 
 interface PaymentStoreDependencies {
-    paymentRepository: PaymentRepository
+    payCredit: PayCredit
 }
 
-export const createPaymentStore = ({ paymentRepository }: PaymentStoreDependencies) => create<PaymentState>((set) => ({
+export const createPaymentStore = ({ payCredit }: PaymentStoreDependencies) => create<PaymentState>((set) => ({
 
     isLoading: false,
     error: null,
     makePay: async (request: PayRequest): Promise<PayResponse> => {
+        set({
+            isLoading: true,
+            error: null
+        })
 
-        try {
-            set({
-                isLoading: true,
-                error: null
-            })
+        const result = await payCredit(request)
 
-            const response = await paymentRepository.makePay(request)
-
-            set({
-                isLoading: false,
-                error: null
-            })
-
-            return { success: true, payment: response.payment }
-        } catch (error: unknown) {
+        if (!result.ok) {
             set({
                 isLoading: false,
-                error: resolveErrorMessage(error, 'Error en el servicio'),
+                error: result.message
             })
 
             return { success: false, payment: null }
-
         }
+
+        set({
+            isLoading: false,
+            error: null
+        })
+
+        return result.value
     }
 }))
 
-export const usePaymentStore = createPaymentStore({ paymentRepository: container.payment })
+export const usePaymentStore = createPaymentStore({ payCredit: container.payCredit })

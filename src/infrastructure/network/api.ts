@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { SESSION_TOKEN_KEY } from '@/infrastructure/storage/SessionStorageImpl'
 
 export const createApiClient = (baseURL: string): AxiosInstance => {
     const client = axios.create({
@@ -11,7 +12,7 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
     })
 
     client.interceptors.request.use(async config => {
-        const token = await AsyncStorage.getItem('token')
+        const token = await AsyncStorage.getItem(SESSION_TOKEN_KEY)
 
         if (token) {
             config.headers.Authorization = `Bearer ${token}`

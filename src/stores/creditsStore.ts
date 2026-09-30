@@ -1,7 +1,6 @@
 import { create } from "zustand"
-import { resolveErrorMessage } from "@/domain/AppError"
 import { Credit } from "@/domain/Credit"
-import { CreditsRepository } from "@/domain/repositories/CreditsRepository"
+import { ListCredits } from "@/domain/usecases/ListCredits"
 import { container } from "@/infrastructure/di/container"
 
 interface CreditsState {
@@ -10,48 +9,41 @@ interface CreditsState {
     totalAmount: number
     credits: Credit[]
     getCredits: () => Promise<void>
-
 }
 
 interface CreditsStoreDependencies {
-    creditsRepository: CreditsRepository
+    listCredits: ListCredits
 }
 
-export const createCreditsStore = ({ creditsRepository }: CreditsStoreDependencies) => create<CreditsState>((set) => ({
+export const createCreditsStore = ({ listCredits }: CreditsStoreDependencies) => create<CreditsState>((set) => ({
     isLoading: false,
     error: null,
     totalAmount: 0,
     credits: [],
     getCredits: async () => {
-        try {
+        set({
+            isLoading: true,
+            error: null
+        })
 
-            set({
-                isLoading: true,
-                error: null
-            })
+        const result = await listCredits()
 
-            const response = await creditsRepository.getCredits()
-
-            const total = response.credits.reduce(
-                (sum, product) => sum + product.balance,
-                0
-            );
-
-            set({
-                totalAmount: total,
-                credits: response.credits,
-                isLoading: false,
-                error: null
-            })
-
-        } catch (error: unknown) {
+        if (!result.ok) {
             set({
                 isLoading: false,
-                error: resolveErrorMessage(error, 'Error en el servicio'),
+                error: result.message
             })
 
+            return
         }
+
+        set({
+            credits: result.value.credits,
+            totalAmount: result.value.totalAmount,
+            isLoading: false,
+            error: null
+        })
     }
 }))
 
-export const useCreditsStore = createCreditsStore({ creditsRepository: container.credits })
+export const useCreditsStore = createCreditsStore({ listCredits: container.listCredits })

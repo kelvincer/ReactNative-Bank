@@ -1,19 +1,24 @@
 import { AuthRepository } from '@/domain/repositories/AuthRepository'
+import { SessionStorage } from '@/domain/SessionStorage'
+import { createLoginUser } from '@/domain/usecases/LoginUser'
 import { createAuthStore } from '@/stores/authStore'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createFakeAuthRepository, toAxiosError } from '../helpers/fakeRepositories'
+import { createFakeSessionStorage } from '../helpers/fakeSessionStorage'
 
 const user = { id: '1', name: 'name', email: 'email' }
 
 let authRepository: jest.Mocked<AuthRepository>
+let sessionStorage: jest.Mocked<SessionStorage>
 let useTestAuthStore: ReturnType<typeof createAuthStore>
 
-beforeEach(async () => {
-    await AsyncStorage.clear()
+beforeEach(() => {
     jest.clearAllMocks()
 
     authRepository = createFakeAuthRepository()
-    useTestAuthStore = createAuthStore({ authRepository })
+    sessionStorage = createFakeSessionStorage()
+    useTestAuthStore = createAuthStore({
+        loginUser: createLoginUser({ authRepository, sessionStorage })
+    })
 })
 
 it('should have initial state', () => {
@@ -40,18 +45,6 @@ it('should login successfully', async () => {
     expect(state.token).toBe('1000')
     expect(state.error).toBeNull()
     expect(state.isLoading).toBe(false)
-})
-
-it('should persist the token and the user', async () => {
-    authRepository.login.mockResolvedValue({ user, token: '1000' })
-
-    await useTestAuthStore.getState().login({
-        email: 'test@test.com',
-        password: '123456',
-    })
-
-    await expect(AsyncStorage.getItem('token')).resolves.toBe('1000')
-    await expect(AsyncStorage.getItem('user')).resolves.toEqual(JSON.stringify(user))
 })
 
 it('should set isLoading true and error null while logging in', async () => {
@@ -114,23 +107,6 @@ it('should fall back to a default message when the rejection is not an error obj
     })
 
     expect(useTestAuthStore.getState().error).toBe('No se pudo iniciar sesión')
-})
-
-it('should clear the session and the persisted data on logout', async () => {
-    authRepository.login.mockResolvedValue({ user, token: '1000' })
-
-    await useTestAuthStore.getState().login({
-        email: 'test@test.com',
-        password: '123456',
-    })
-    await useTestAuthStore.getState().logout()
-
-    const state = useTestAuthStore.getState()
-
-    expect(state.user).toBeNull()
-    expect(state.token).toBeNull()
-    await expect(AsyncStorage.getItem('token')).resolves.toBeNull()
-    await expect(AsyncStorage.getItem('user')).resolves.toBeNull()
 })
 
 it('should clear the error', () => {

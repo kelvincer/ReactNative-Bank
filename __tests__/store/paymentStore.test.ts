@@ -1,5 +1,6 @@
 import { Payment } from '@/domain/PayTypes'
 import { PaymentRepository } from '@/domain/repositories/PaymentRepository'
+import { createPayCredit } from '@/domain/usecases/PayCredit'
 import { createPaymentStore } from '@/stores/paymentStore'
 import { createFakePaymentRepository, toAxiosError } from '../helpers/fakeRepositories'
 
@@ -18,7 +19,9 @@ beforeEach(() => {
     jest.clearAllMocks()
 
     paymentRepository = createFakePaymentRepository()
-    useTestPaymentStore = createPaymentStore({ paymentRepository })
+    useTestPaymentStore = createPaymentStore({
+        payCredit: createPayCredit({ paymentRepository })
+    })
 })
 
 it('should have initial state', () => {

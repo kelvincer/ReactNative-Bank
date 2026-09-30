@@ -1,5 +1,6 @@
 import { Credit } from '@/domain/Credit'
 import { CreditsRepository } from '@/domain/repositories/CreditsRepository'
+import { createListCredits } from '@/domain/usecases/ListCredits'
 import { createCreditsStore } from '@/stores/creditsStore'
 import { createFakeCreditsRepository, toAxiosError } from '../helpers/fakeRepositories'
 
@@ -23,7 +24,9 @@ beforeEach(() => {
     jest.clearAllMocks()
 
     creditsRepository = createFakeCreditsRepository()
-    useTestCreditsStore = createCreditsStore({ creditsRepository })
+    useTestCreditsStore = createCreditsStore({
+        listCredits: createListCredits({ creditsRepository })
+    })
 })
 
 it('should have initial state', () => {

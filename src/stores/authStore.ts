@@ -1,9 +1,7 @@
 import { create } from "zustand"
-import { resolveErrorMessage } from "@/domain/AppError"
 import { LoginRequest, User } from "@/domain/AuthTypes"
-import { AuthRepository } from "@/domain/repositories/AuthRepository"
+import { LoginUser } from "@/domain/usecases/LoginUser"
 import { container } from "@/infrastructure/di/container"
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 interface AuthState {
     user: User | null
@@ -11,60 +9,43 @@ interface AuthState {
     isLoading: boolean
     error: string | null
     login: (credentials: LoginRequest) => Promise<boolean>
-    logout: () => Promise<void>
     clearError: () => void
 }
 
 interface AuthStoreDependencies {
-    authRepository: AuthRepository
+    loginUser: LoginUser
 }
 
-export const createAuthStore = ({ authRepository }: AuthStoreDependencies) => create<AuthState>((set) => ({
+export const createAuthStore = ({ loginUser }: AuthStoreDependencies) => create<AuthState>((set) => ({
     user: null,
     token: null,
     isLoading: false,
     error: null,
     login: async (credentials) => {
-        try {
+        set({
+            isLoading: true,
+            error: null
+        })
 
-            set({
-                isLoading: true,
-                error: null
-            })
+        const result = await loginUser(credentials)
 
-            const response = await authRepository.login(credentials)
-            await AsyncStorage.setItem('token', response.token);
-            await AsyncStorage.setItem(
-                'user',
-                JSON.stringify(response.user),
-            );
-
-            set({
-                user: response.user,
-                token: response.token,
-                isLoading: false,
-                error: null
-            })
-
-            return true
-
-        } catch (error: unknown) {
+        if (!result.ok) {
             set({
                 isLoading: false,
-                error: resolveErrorMessage(error, 'No se pudo iniciar sesión'),
+                error: result.message
             })
 
             return false
         }
-    },
-    logout: async () => {
-        await AsyncStorage.removeItem('token');
-        await AsyncStorage.removeItem('user');
+
         set({
-            user: null,
-            token: null,
+            user: result.value.user,
+            token: result.value.token,
+            isLoading: false,
             error: null
         })
+
+        return true
     },
     clearError: () => {
         set({
@@ -74,4 +55,4 @@ export const createAuthStore = ({ authRepository }: AuthStoreDependencies) => cr
 
 }))
 
-export const useAuthStore = createAuthStore({ authRepository: container.auth })
+export const useAuthStore = createAuthStore({ loginUser: container.loginUser })
